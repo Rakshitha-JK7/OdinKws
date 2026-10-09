@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Odin Dataset Recorder</title>
+<style>
+:root{--bg:#eef1ee;--card:#fbfcfb;--tx:#16202b;--mu:#5d6b78;--bd:#d3dad5;--od:#0f766e;--sm:#b45309;--rd:#c62828;--ok:#2e7d32;--on:#fff;--nz:#475569;--en:#1d4ed8;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10161c;--card:#18212a;--tx:#e6ece8;--mu:#93a3ae;--bd:#2b3945;--od:#2dd4bf;--sm:#fbbf24;--rd:#f87171;--ok:#6ee7a0;--on:#0b1512;--nz:#cbd5e1;--en:#60a5fa}}
+:root[data-theme="dark"]{--bg:#10161c;--card:#18212a;--tx:#e6ece8;--mu:#93a3ae;--bd:#2b3945;--od:#2dd4bf;--sm:#fbbf24;--rd:#f87171;--ok:#6ee7a0;--on:#0b1512;--nz:#cbd5e1;--en:#60a5fa}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:760px;margin:0 auto;padding:14px}
+h1{font-size:21px;margin:6px 0 4px}h2{font-size:18px;margin:0}
+.mu{color:var(--mu);font-size:13px}.bad{color:var(--rd)}
+#msg{position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);padding:6px 0;margin:0;z-index:2}html{-webkit-text-size-adjust:100%}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:12px;margin:0 0 12px}
+summary{cursor:pointer;font-weight:600}
+.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:10px}
+label{display:block;font-size:12px;color:var(--mu);margin:8px 0 2px}
+.chk{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--tx)}
+input,select{width:100%;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit;font-size:16px}
+input[type=checkbox]{width:auto}
+button{font:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--tx);outline-offset:2px}
+.s{min-height:44px;padding:8px 12px;border:1px solid var(--bd);border-radius:8px;background:var(--card);color:var(--tx)}
+.p{background:var(--ok);border-color:var(--ok);color:var(--on)}.d{color:var(--rd)}
+.stage{text-align:center}#prompt{font-size:26px;font-weight:700;min-height:34px}
+#cd{font-size:56px;font-weight:800;min-height:68px;line-height:1.1}
+.bar,.track{height:6px;background:var(--bd);border-radius:3px;overflow:hidden}
+.bar i,.track i{display:block;height:100%;width:0;background:var(--c,var(--rd))}
+.cls{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin-bottom:12px}
+.cc{border:2px solid var(--c);border-radius:12px;padding:12px;background:var(--card)}
+.cnt{margin:4px 0 8px;font-size:13px;color:var(--mu)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.rb{flex:1;padding:14px 10px;border:0;border-radius:10px;background:var(--c);color:var(--on);font-weight:600;margin-top:10px}
+.rb:disabled,.s:disabled{opacity:.5;cursor:default}
+.li{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--bd);font-size:13px}
+.li span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+</style></head><body><main>
+<h1>Odin dataset recorder</h1>
+<p id="msg" class="mu">Fill in the setup once, then record.</p>
+
+<details class="card" id="setup" open><summary>Setup</summary>
+ <div class="g">
+  <div><label for="spk">Speaker ID (required)</label><input id="spk" placeholder="spk01"></div>
+  <div><label for="split">This speaker is for</label><select id="split"><option value="auto">auto split</option><option value="train">training only</option><option value="test">testing only</option></select></div>
+  <div><label for="dist">Distance from mic</label><select id="dist"><option>close</option><option>medium</option><option>far</option></select></div>
+  <div><label for="env">Environment</label><select id="env"><option>quiet</option><option>fan</option><option>music</option><option>hallway</option><option>outdoors</option></select></div>
+  <div><label for="dev">Device or mic</label><input id="dev" placeholder="phone, laptop"></div>
+  <div><label for="n">Clips per auto run</label><input id="n" type="number" min="1" max="500"></div>
+ </div>
+ <label for="words">Similar words to cycle through (comma separated)</label><input id="words"><label for="ew">English words (comma separated, blank = built-in list)</label><input id="ew">
+ <label class="chk" style="margin-top:10px"><input type="checkbox" id="con"> Everyone being recorded has agreed to it</label>
+ <p><button class="s p" id="save">Save setup</button></p>
+</details>
+
+<section class="card stage"><div id="prompt">Ready</div><div id="cd"></div><div class="bar"><i id="bar"></i></div>
+ <p class="mu">Each clip is 1 second. Wait for the high beep, then say the word a moment after it, not with it. For noise clips just stay quiet and let the room be heard; change Environment in Setup between sessions.</p>
+ <button class="s p" id="micb">Enable microphone</button> <button class="s d" id="stop" hidden>Stop</button></section>
+
+<div class="cls" id="cls"></div>
+
+<div class="card"><div class="row"><b style="flex:1" id="tot"></b><button class="s p" id="ex">Export ZIP</button><button class="s d" id="clr">Clear all</button></div>
+ <p class="mu" id="spks"></p><p class="mu bad" id="dlnote"></p><div id="recent"></div>
+ <p class="mu">ZIP layout: <code>odin/odin.spk01.0001.wav</code>, <code>similar_words/</code>, plus <code>noise/</code>, <code>english_words/</code> and <code>metadata.csv</code>. Audio is 16 kHz mono WAV. In the app every clip is saved at once to one fixed folder (Android/data/com.odin.recorder/files/OdinDataset). Export ZIP packs everything and opens the share sheet. Each export holds all clips so far. Uninstalling the app deletes the clips, so export first. Don't press Clear all until the export is saved. Shortcuts: 1 odin, 2 similar word, 3 noise, 4 English word, Esc stops.</p></div>
+</main>
+<script>
+const $=s=>document.querySelector(s),SR=16000,DUR=1;
+const CL=[{id:'odin',t:500,c:'--od'},{id:'similar_words',t:500,c:'--sm'},{id:'noise',t:500,c:'--nz'},{id:'english_words',t:500,c:'--en'}];
+const EWD=[...new Set(('time year people way day man thing woman life child world school state family student group country problem hand part place case week company system program question work government number night point home water room mother area money story fact month lot right study book eye job word business issue side kind head house service friend father power hour game line end member law car city community name president team minute idea kid body information back parent face others level office door health person art war history party result change morning reason research girl guy moment air teacher force education foot boy age policy music market sense nation plan college interest death experience effect use class control care field development role effort rate heart drug show leader light voice wife police mind price report decision son view relationship town road arm difference value building action model season society tax director position player record paper space ground form event official matter center couple site project activity star table need court oil situation cost industry figure street image phone data picture practice piece land product doctor wall patient worker news test movie north love support technology step baby computer type attention film tree source organization hair window culture chance brother energy period course summer plant opportunity term letter condition choice run walk eat sleep read write open close big small red blue green happy yes no stop go up down left').split(' '))];
+const F=['spk','split','dist','env','dev','words','ew','n'];
+const mem=new Map();let idb=null,clips=[],busy=false,stopF=false,capturing=false,chunks=[],ctx=null,wi=0,au;
+let cfg={spk:'',split:'auto',dist:'close',env:'quiet',dev:'',con:false,words:'Owen, Woden, Oden',ew:'',n:20};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const slug=s=>String(s||'').trim().replace(/[^\w-]+/g,'-').replace(/^-|-$/g,'');
+const say=(t,bad)=>{const m=$('#msg');m.textContent=t;m.className=bad?'bad':'mu'};
+const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}},lsSet=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+const NAT=!!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform()),FS=NAT&&Capacitor.Plugins.Filesystem,SH=NAT&&Capacitor.Plugins.Share,DIR='EXTERNAL',ROOT='OdinDataset',idx=new Map();
+const b64u8=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const u8b64=u=>{let s='';for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(s)};
+const blobB64=b=>new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result.split(',')[1]);f.readAsDataURL(b)});
+const wIdx=()=>FS.writeFile({path:ROOT+'/clips.json',data:JSON.stringify([...idx.values()]),directory:DIR,encoding:'utf8',recursive:true});
+async function nAll(){try{const r=await FS.readFile({path:ROOT+'/clips.json',directory:DIR,encoding:'utf8'});JSON.parse(r.data).forEach(k=>{k.wav=null;idx.set(k.id,k)})}catch(e){}return[...idx.values()]}
+async function nPut(o){await FS.writeFile({path:ROOT+'/'+o.file,data:await blobB64(o.wav),directory:DIR,recursive:true});idx.set(o.id,{...o,wav:undefined});await wIdx()}
+async function nDel(id){const k=idx.get(id);if(k)try{await FS.deleteFile({path:ROOT+'/'+k.file,directory:DIR})}catch(e){}idx.delete(id);await wIdx()}
+async function nClr(){try{await FS.rmdir({path:ROOT,directory:DIR,recursive:true})}catch(e){}idx.clear()}
+const wavOf=async k=>k.wav||new Blob([b64u8((await FS.readFile({path:ROOT+'/'+k.file,directory:DIR})).data)],{type:'audio/wav'});
+const rq=r=>new Promise((a,b)=>{r.onsuccess=()=>a(r.result);r.onerror=()=>b(r.error)});
+async function initDB(){if(NAT)return;try{idb=await new Promise((a,b)=>{const r=indexedDB.open('odin-recorder',1);r.onupgradeneeded=()=>r.result.createObjectStore('clips',{keyPath:'id'});r.onsuccess=()=>a(r.result);r.onerror=()=>b(r.error)})}catch(e){idb=null;say('Browser storage is unavailable, so clips last only until you close this page. Export often.',1)}}
+const store=m=>idb.transaction('clips',m).objectStore('clips');
+const allC=()=>NAT?nAll():idb?rq(store('readonly').getAll()):Promise.resolve([...mem.values()]);
+const putC=o=>NAT?nPut(o):idb?rq(store('readwrite').put(o)):Promise.resolve(mem.set(o.id,o));
+const delC=id=>NAT?nDel(id):idb?rq(store('readwrite').delete(id)):Promise.resolve(mem.delete(id));
+const clrC=()=>NAT?nClr():idb?rq(store('readwrite').clear()):Promise.resolve(mem.clear());
+const ew=()=>{const w=cfg.ew.split(',').map(s=>s.trim()).filter(Boolean);return w.length?w:EWD};
+const words=()=>{const w=cfg.words.split(',').map(s=>s.trim()).filter(Boolean);return w.length?w:['Owen']};
+
+$('#cls').innerHTML=CL.map(c=>`<div class="cc" style="--c:var(${c.c})"><h2>${c.id}</h2><div class="cnt" id="n-${c.id}"></div><div class="track"><i id="t-${c.id}"></i></div><div class="row"><button class="rb" data-id="${c.id}" data-auto="0">Record 1</button><button class="rb" data-id="${c.id}" data-auto="1">Auto-record</button></div></div>`).join('');
+$('#cls').onclick=e=>{const b=e.target.closest('button');if(b)run(b.dataset.id,b.dataset.auto==='1')};
+function fill(){F.forEach(f=>$('#'+f).value=cfg[f]);$('#con').checked=cfg.con}
+$('#save').onclick=()=>{F.forEach(f=>cfg[f]=$('#'+f).value);cfg.spk=slug(cfg.spk);cfg.n=Math.min(500,Math.max(1,+cfg.n||20));cfg.con=$('#con').checked;lsSet('odin-rec',JSON.stringify(cfg));fill();$('#setup').open=!(cfg.spk&&cfg.con);say(cfg.spk&&cfg.con?'Setup saved. Choose a class below to record.':'Speaker ID and consent are required.',!(cfg.spk&&cfg.con))};
+function lock(v){document.querySelectorAll('.rb').forEach(b=>b.disabled=v);$('#stop').hidden=!v}
+$('#stop').onclick=()=>{stopF=true};
+
+async function mic(){
+ if(ctx)return;const c=new(window.AudioContext||window.webkitAudioContext)();
+ try{const st=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+  const m=c.createMediaStreamSource(st),p=c.createScriptProcessor(4096,1,1);
+  p.onaudioprocess=e=>{if(capturing)chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)))};m.connect(p);p.connect(c.destination);c.resume();ctx=c}
+ catch(e){try{c.close()}catch(x){}throw e}
+}
+function micErr(e){say(e&&e.name==='NotAllowedError'?'Microphone is blocked. Open Android Settings > Apps > Odin Recorder > Permissions > Microphone > Allow, then reopen the app.':'Microphone unavailable ('+((e&&(e.message||e.name))||e)+').',1)}
+$('#micb').onclick=async()=>{try{await mic();$('#micb').hidden=true;say('Microphone ready.')}catch(e){micErr(e)}};
+function beep(f,d){const o=ctx.createOscillator(),g=ctx.createGain();o.frequency.value=f;g.gain.value=.15;o.connect(g);g.connect(ctx.destination);o.start();o.stop(ctx.currentTime+d)}
+async function run(id,auto){
+ if(busy)return;const c=CL.find(x=>x.id===id),have=()=>clips.filter(k=>k.cls===id).length;
+ if(have()>=c.t)return say(id+' is complete ('+c.t+' clips). Delete clips to record more.');
+ if(!cfg.spk||!cfg.con){$('#setup').open=true;return say('Enter a speaker ID, tick the consent box and save the setup first.',1)}
+ if(!ctx){try{await mic()}catch(e){return micErr(e)}}
+ $('#micb').hidden=true;if(ctx.state==='suspended')await ctx.resume();
+ busy=true;stopF=false;lock(true);const n=auto?cfg.n:1;let wl=null;try{wl=await navigator.wakeLock?.request('screen')}catch(e){}
+ $('#prompt').scrollIntoView({block:'center',behavior:'smooth'});
+ try{for(let i=0;i<n&&!stopF;i++){if(have()>=c.t){say(id+' reached '+c.t+' clips.');break}await one(c,auto?`${i+1} of ${n}`:'');if(auto&&!stopF)await sleep(700)}}
+ catch(e){say('Error: '+((e&&e.message)||e),1)} finally{try{wl&&wl.release()}catch(e){}busy=false;lock(false);$('#prompt').textContent='Ready';$('#cd').textContent='';$('#bar').style.width='0';render()}
+}
+async function one(c,tag){
+ const cnt=clips.filter(k=>k.cls===c.id).length,w=c.id==='odin'?'Odin':c.id==='noise'?'(background noise)':c.id==='english_words'?ew()[cnt%ew().length]:words()[cnt%words().length];
+ $('#prompt').textContent=(c.id==='noise'?'Stay quiet, recording noise':'Say: '+w)+(tag?'  ('+tag+')':'');
+ for(const k of [3,2,1]){$('#cd').textContent=k;beep(520,.08);await sleep(650);if(stopF)return}
+ $('#cd').textContent=c.id==='noise'?'REC':'SAY';beep(880,.12);await sleep(170);if(stopF)return;
+ chunks=[];capturing=true;const t0=performance.now();
+ const tick=()=>{const f=Math.min(1,(performance.now()-t0)/(DUR*1000));$('#bar').style.width=f*100+'%';if(f<1)requestAnimationFrame(tick)};tick();
+ await sleep(DUR*1000+120);capturing=false;$('#cd').textContent='';
+ await save(c,w);
+}
+async function save(c,w){
+ let n=0;chunks.forEach(a=>n+=a.length);const raw=new Float32Array(n);let o=0;chunks.forEach(a=>{raw.set(a,o);o+=a.length});
+ const r=ctx.sampleRate/SR,N=SR*DUR,x=new Float32Array(N);
+ for(let i=0;i<N;i++){const p=i*r,a=Math.floor(p),f=p-a;if(a<raw.length)x[i]=raw[a]*(1-f)+(raw[a+1]??raw[a])*f}
+ let pk=0,ss=0,cl=0;for(const v of x){const a=Math.abs(v);if(a>pk)pk=a;ss+=v*v;if(a>=.99)cl++}
+ const rms=Math.sqrt(ss/N),flags=[],e=Math.round(SR*.04);
+ const pkOf=(a,b)=>{let m=0;for(let i=a;i<b;i++){const v=Math.abs(x[i]);if(v>m)m=v}return m};
+ if(c.id==='noise'){if(rms<.0003)flags.push('silent')}else if(rms<.005)flags.push('silent');else if(rms<.012)flags.push('very quiet');
+ if(cl>10)flags.push('clipped');
+ if(c.id!=='noise'&&pk>.05){if(pkOf(0,e)>.5*pk)flags.push('word may start too early');if(pkOf(N-e,N)>.5*pk)flags.push('word may be cut off at the end')}
+ const num=Math.max(0,...clips.filter(k=>k.cls===c.id).map(k=>k.num))+1;
+ const k={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),t:Date.now(),cls:c.id,word:w,spk:cfg.spk,num,file:`${c.id}/${c.id}.${cfg.spk}.${String(num).padStart(4,'0')}.wav`,date:new Date().toISOString(),dist:cfg.dist,env:cfg.env,dev:cfg.dev,split:cfg.split,ok:!flags.length,flags,wav:wav(x)};
+ await putC(k);clips.push(k);if(NAT)clips.slice(0,-6).forEach(x=>x.wav=null);render();say(k.ok?'Saved '+k.file:'Saved with a warning ('+flags.join(', ')+'). Delete it and re-record if it is bad.',!k.ok);
+}
+function wav(x){const b=new ArrayBuffer(44+x.length*2),v=new DataView(b),w=(o,s)=>[...s].forEach((c,i)=>v.setUint8(o+i,c.charCodeAt(0)));
+ w(0,'RIFF');v.setUint32(4,36+x.length*2,true);w(8,'WAVEfmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,SR,true);v.setUint32(28,SR*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,'data');v.setUint32(40,x.length*2,true);
+ x.forEach((s,i)=>v.setInt16(44+i*2,Math.max(-1,Math.min(1,s))*32767,true));return new Blob([b],{type:'audio/wav'})}
+function play(b){try{au&&au.pause();au=new Audio(URL.createObjectURL(b));au.play()}catch(e){say('Playback failed.',1)}}
+async function remove(k){await delC(k.id);clips=clips.filter(x=>x!==k);render()}
+function render(){
+ CL.forEach(c=>{const m=clips.filter(k=>k.cls===c.id).length;$('#n-'+c.id).textContent=m+' of '+c.t+' clips';$('#t-'+c.id).style.width=Math.min(100,m/c.t*100)+'%'});
+ $('#tot').textContent=clips.length+' clips total';
+ const by={};clips.forEach(k=>{by[k.spk]=by[k.spk]||Object.fromEntries(CL.map(c=>[c.id,0]));by[k.spk][k.cls]++});
+ $('#spks').textContent=Object.keys(by).length?'By speaker: '+Object.entries(by).map(([s,v])=>`${s} (${CL.map(c=>c.id+' '+v[c.id]).join(', ')})`).join('; '):'No clips yet.';
+ const r=$('#recent');r.innerHTML='';
+ clips.slice(-6).reverse().forEach(k=>{const d=document.createElement('div');d.className='li';const t=document.createElement('span');t.textContent=k.file+' ['+k.word+']'+(k.ok?'':'  warning: '+k.flags.join(', '));if(!k.ok)t.className='bad';
+  const p=document.createElement('button');p.className='s';p.textContent='Play';p.onclick=async()=>{try{play(await wavOf(k))}catch(e){say('Playback failed.',1)}};
+  const x=document.createElement('button');x.className='s d';x.textContent='Delete';x.onclick=()=>remove(k);d.append(t,p,x);r.append(d)});
+}
+const q=v=>`"${String(v??'').replace(/"/g,'""')}"`;
+const csvText=()=>['file,label,word,speaker_id,split_hint,distance,environment,device,date,quality_ok,flags'].concat(clips.map(k=>[k.file,k.cls,k.word,k.spk,k.split,k.dist,k.env,k.dev,k.date,k.ok,k.flags.join('|')].map(q).join(','))).join('\n');
+const CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
+const crc32=u=>{let c=0xFFFFFFFF;for(let i=0;i<u.length;i++)c=CRC[(c^u[i])&255]^(c>>>8);return(c^0xFFFFFFFF)>>>0};
+function makeZip(files){
+ const enc=new TextEncoder(),parts=[],cen=[];let off=0;
+ for(const f of files){const nm=enc.encode(f.name),crc=crc32(f.data),sz=f.data.length;
+  const h=new DataView(new ArrayBuffer(30));h.setUint32(0,0x04034b50,true);h.setUint16(4,20,true);h.setUint16(6,0x0800,true);h.setUint16(12,0x21,true);h.setUint32(14,crc,true);h.setUint32(18,sz,true);h.setUint32(22,sz,true);h.setUint16(26,nm.length,true);
+  parts.push(h.buffer,nm,f.data);
+  const c=new DataView(new ArrayBuffer(46));c.setUint32(0,0x02014b50,true);c.setUint16(4,20,true);c.setUint16(6,20,true);c.setUint16(8,0x0800,true);c.setUint16(14,0x21,true);c.setUint32(16,crc,true);c.setUint32(20,sz,true);c.setUint32(24,sz,true);c.setUint16(28,nm.length,true);c.setUint32(42,off,true);
+  cen.push(c.buffer,nm);off+=30+nm.length+sz}
+ let cs=0;cen.forEach(p=>cs+=p.byteLength);
+ const e=new DataView(new ArrayBuffer(22));e.setUint32(0,0x06054b50,true);e.setUint16(8,files.length,true);e.setUint16(10,files.length,true);e.setUint32(12,cs,true);e.setUint32(16,off,true);
+ return new Blob([...parts,...cen,e.buffer],{type:'application/zip'});
+}
+function saveFile(name,blob){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.append(a);a.click();a.remove();say('ZIP download started: '+name)}
+async function exportNative(){
+ const name='odin_dataset.zip',enc=new TextEncoder(),cen=[];let off=0,buf=[],bl=0,miss=0;
+ try{await FS.deleteFile({path:name,directory:'CACHE'})}catch(e){}
+ const flush=async()=>{if(!bl)return;const u=new Uint8Array(bl);let o=0;buf.forEach(x=>{u.set(x,o);o+=x.length});buf=[];bl=0;await FS.appendFile({path:name,data:u8b64(u),directory:'CACHE'})};
+ const put=async(nm,d)=>{const n=enc.encode(nm),crc=crc32(d),sz=d.length,h=new DataView(new ArrayBuffer(30+n.length)),c=new DataView(new ArrayBuffer(46+n.length));
+  h.setUint32(0,0x04034b50,true);h.setUint16(4,20,true);h.setUint16(6,0x0800,true);h.setUint16(12,0x21,true);h.setUint32(14,crc,true);h.setUint32(18,sz,true);h.setUint32(22,sz,true);h.setUint16(26,n.length,true);
+  c.setUint32(0,0x02014b50,true);c.setUint16(4,20,true);c.setUint16(6,20,true);c.setUint16(8,0x0800,true);c.setUint16(14,0x21,true);c.setUint32(16,crc,true);c.setUint32(20,sz,true);c.setUint32(24,sz,true);c.setUint16(28,n.length,true);c.setUint32(42,off,true);
+  const hu=new Uint8Array(h.buffer),cu=new Uint8Array(c.buffer);hu.set(n,30);cu.set(n,46);cen.push(cu);buf.push(hu,d);bl+=hu.length+d.length;off+=hu.length+d.length;if(bl>2e6)await flush()};
+ let i=0;for(const k of clips){say('Packing '+(++i)+' of '+clips.length+'…');try{await put(k.file,b64u8((await FS.readFile({path:ROOT+'/'+k.file,directory:DIR})).data))}catch(e){miss++}}
+ await put('metadata.csv',enc.encode(csvText()));await flush();
+ let cs=0;cen.forEach(x=>cs+=x.length);const e=new DataView(new ArrayBuffer(22)),n=clips.length-miss+1;
+ e.setUint32(0,0x06054b50,true);e.setUint16(8,n,true);e.setUint16(10,n,true);e.setUint32(12,cs,true);e.setUint32(16,off,true);
+ const tail=new Uint8Array(cs+22);let o=0;cen.forEach(x=>{tail.set(x,o);o+=x.length});tail.set(new Uint8Array(e.buffer),o);
+ await FS.appendFile({path:name,data:u8b64(tail),directory:'CACHE'});
+ const{uri}=await FS.getUri({path:name,directory:'CACHE'});
+ say('ZIP ready ('+(n-1)+' clips'+(miss?', '+miss+' missing files skipped':'')+'). Choose where to send it.',!!miss);
+ await SH.share({title:'Odin dataset',files:[uri],dialogTitle:'Share dataset ZIP'});
+}
+$('#ex').onclick=async()=>{
+ if(!clips.length)return say('No clips to export yet.',1);
+ say('Building ZIP…');if(NAT)return exportNative().catch(e=>say(/cancel/i.test((e&&e.message)||'')?'Share cancelled. Press Export ZIP again any time.':'Export failed: '+((e&&e.message)||e),1));
+ try{const files=[];for(const k of clips)files.push({name:k.file,data:new Uint8Array(await k.wav.arrayBuffer())});
+  files.push({name:'metadata.csv',data:new TextEncoder().encode(csvText())});
+  await saveFile('odin_dataset.zip',makeZip(files))}
+ catch(e){say('Could not build the ZIP: '+((e&&e.message)||e),1)}
+};
+let armed=false;$('#clr').onclick=async e=>{if(!armed){armed=true;e.target.textContent='Click again to delete everything';setTimeout(()=>{armed=false;e.target.textContent='Clear all'},4000);return}
+ await clrC();clips=[];armed=false;e.target.textContent='Clear all';render()};
+document.addEventListener('keydown',e=>{if(/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)||e.repeat)return;if(e.key==='1')run('odin',false);else if(e.key==='2')run('similar_words',false);else if(e.key==='3')run('noise',false);else if(e.key==='4')run('english_words',false);else if(e.key==='Escape')stopF=true});
+(async()=>{const s=lsGet('odin-rec');if(s){try{cfg=Object.assign(cfg,JSON.parse(s))}catch(e){}}fill();$('#setup').open=!(cfg.spk&&cfg.con);await initDB();clips=(await allC()).sort((a,b)=>a.t-b.t);render();if(NAT){say('Clips save to Android/data/com.odin.recorder/files/'+ROOT);mic().then(()=>{$('#micb').hidden=true}).catch(()=>{})}})();
+</script></body></html>
